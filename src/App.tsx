@@ -16,7 +16,9 @@ import {
 import {
   ArrowRight,
   Bookmark as BookmarkIcon,
+  Copy,
   Leaf,
+  LogOut,
   Moon,
   Plus,
   Search,
@@ -26,16 +28,49 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { ConfirmDialog } from "./components/ConfirmDialog";
+import { AuthScreen } from "./features/auth/AuthScreen";
+import { WorkspaceSetup } from "./features/auth/WorkspaceSetup";
 import { BookmarkCard } from "./features/bookmarks/BookmarkCard";
 import { BookmarkForm } from "./features/bookmarks/BookmarkForm";
 import { appReducer, type AppAction } from "./features/bookmarks/reducer";
 import { SettingsPanel } from "./features/settings/SettingsPanel";
+import {
+  createWorkspace,
+  getCurrentUser,
+  joinWorkspace,
+  listWorkspaces,
+  loadWorkspaceData,
+  saveWorkspaceData,
+  signOut,
+  subscribeToWorkspace,
+  unsubscribeFromWorkspace,
+  type SharedWorkspace,
+} from "./services/cloud";
 import { loadAppData, saveAppData, serializeAppData } from "./services/storage";
+import { isSupabaseConfigured, supabase } from "./services/supabase";
 import type { AppData, Bookmark, Theme } from "./types/app";
 import { filterBookmarks } from "./utils/bookmarks";
+import type { User } from "@supabase/supabase-js";
 
-function App() {
-  const initialLoad = useMemo(() => loadAppData(window.localStorage), []);
+type BookmarkDashboardProps = {
+  remoteData?: AppData;
+  workspace?: SharedWorkspace;
+  userEmail?: string;
+  onDataChange?: (data: AppData, previousData: AppData) => Promise<void>;
+  onSignOut?: () => void;
+};
+
+function BookmarkDashboard({
+  remoteData,
+  workspace,
+  userEmail,
+  onDataChange,
+  onSignOut,
+}: BookmarkDashboardProps) {
+  const initialLoad = useMemo(
+    () => (remoteData ? { data: remoteData } : loadAppData(window.localStorage)),
+    [],
+  );
   const [data, dispatch] = useReducer(appReducer, initialLoad.data);
   const [canPersist, setCanPersist] = useState(!initialLoad.error);
   const [storageWarning, setStorageWarning] = useState(initialLoad.error ?? "");
@@ -85,17 +120,30 @@ function App() {
 
   function update(action: AppAction) {
     setCanPersist(true);
+    const previousData = data;
+    const nextData = appReducer(data, action);
     dispatch(action);
+    if (onDataChange) {
+      void onDataChange(nextData, previousData).catch(() => {
+        dispatch({ type: "import", data: previousData });
+        notify("云端保存失败，已恢复之前的数据");
+      });
+    }
   }
 
   useEffect(() => {
+    if (onDataChange) return;
     if (!canPersist) return;
     try {
       saveAppData(window.localStorage, data);
     } catch {
       setStorageWarning("浏览器存储空间不足，本次修改可能无法在刷新后保留。 ");
     }
-  }, [data, canPersist]);
+  }, [data, canPersist, onDataChange]);
+
+  useEffect(() => {
+    if (remoteData) dispatch({ type: "import", data: remoteData });
+  }, [remoteData]);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
@@ -225,6 +273,32 @@ function App() {
       <div className="ambient ambient-one" />
       <div className="ambient ambient-two" />
 
+      {workspace && (
+        <aside className="collaboration-bar" aria-label="共享收藏夹信息">
+          <div>
+            <strong>{workspace.name}</strong>
+            <span>{userEmail}</span>
+          </div>
+          <div className="collaboration-actions">
+            <span>
+              邀请码 <code>{workspace.inviteCode}</code>
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                void navigator.clipboard.writeText(workspace.inviteCode);
+                notify("邀请码已复制");
+              }}
+            >
+              <Copy aria-hidden="true" size={15} /> 复制
+            </button>
+            <button type="button" onClick={onSignOut}>
+              <LogOut aria-hidden="true" size={15} /> 退出
+            </button>
+          </div>
+        </aside>
+      )}
+
       <header className="site-header">
         <a className="brand" href="#main" aria-label="栖页首页">
           <span className="brand-mark">
@@ -279,7 +353,9 @@ function App() {
               <em>留在顺手的地方。</em>
             </h1>
             <p className="hero-description">
-              无需登录，不上传云端。收藏、整理、随时抵达——这里完全属于你。
+              {workspace
+                ? "两个人，一份共同收藏。添加与整理会安全同步到云端。"
+                : "无需登录，不上传云端。收藏、整理、随时抵达——这里完全属于你。"}
             </p>
           </div>
           <div className="hero-stat" aria-label={`已收藏 ${data.bookmarks.length} 个网址`}>
@@ -386,7 +462,9 @@ function App() {
       </main>
 
       <footer className="site-footer">
-        <span>栖页 · 数据只留在你的浏览器</span>
+        <span>
+          {workspace ? `栖页 · ${workspace.name}已安全同步` : "栖页 · 数据只留在你的浏览器"}
+        </span>
         <span>安静收藏，自在抵达</span>
       </footer>
 
@@ -461,6 +539,112 @@ function App() {
       </div>
     </div>
   );
+}
+
+function CloudApp() {
+  const [user, setUser] = useState<User | null>();
+  const [workspaces, setWorkspaces] = useState<SharedWorkspace[]>([]);
+  const [workspace, setWorkspace] = useState<SharedWorkspace>();
+  const [remoteData, setRemoteData] = useState<AppData>();
+  const [error, setError] = useState("");
+
+  async function refreshWorkspaces(preferredId?: string) {
+    const next = await listWorkspaces();
+    setWorkspaces(next);
+    setWorkspace(next.find((item) => item.id === preferredId) ?? next[0]);
+  }
+
+  async function refreshData(workspaceId: string) {
+    try {
+      setRemoteData(await loadWorkspaceData(workspaceId));
+      setError("");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "读取共享收藏失败");
+    }
+  }
+
+  useEffect(() => {
+    if (!supabase) return;
+    void getCurrentUser()
+      .then(setUser)
+      .catch(() => setUser(null));
+    const { data } = supabase.auth.onAuthStateChange((_event, session) =>
+      setUser(session?.user ?? null),
+    );
+    return () => data.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setWorkspaces([]);
+      setWorkspace(undefined);
+      setRemoteData(undefined);
+      return;
+    }
+    void refreshWorkspaces().catch((reason) =>
+      setError(reason instanceof Error ? reason.message : "读取收藏夹失败"),
+    );
+  }, [user]);
+
+  useEffect(() => {
+    if (!workspace) return;
+    void refreshData(workspace.id);
+    let timer: number | undefined;
+    const channel = subscribeToWorkspace(workspace.id, () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => void refreshData(workspace.id), 180);
+    });
+    return () => {
+      window.clearTimeout(timer);
+      void unsubscribeFromWorkspace(channel);
+    };
+  }, [workspace?.id]);
+
+  if (!isSupabaseConfigured) {
+    return (
+      <main className="status-page">
+        <h1>云端服务尚未配置</h1>
+        <p>请设置 VITE_SUPABASE_URL 和 VITE_SUPABASE_PUBLISHABLE_KEY。</p>
+      </main>
+    );
+  }
+  if (user === undefined)
+    return (
+      <main className="status-page">
+        <p>正在连接共同收藏夹…</p>
+      </main>
+    );
+  if (!user) return <AuthScreen />;
+  if (workspaces.length === 0) {
+    return (
+      <WorkspaceSetup
+        onCreate={async (name) => refreshWorkspaces(await createWorkspace(name))}
+        onJoin={async (code) => refreshWorkspaces(await joinWorkspace(code))}
+        onSignOut={() => void signOut()}
+      />
+    );
+  }
+  if (!workspace || !remoteData)
+    return (
+      <main className="status-page">
+        <p>{error || "正在载入共同收藏…"}</p>
+      </main>
+    );
+
+  return (
+    <BookmarkDashboard
+      remoteData={remoteData}
+      workspace={workspace}
+      userEmail={user.email}
+      onDataChange={(data, previousData) => saveWorkspaceData(workspace.id, previousData, data)}
+      onSignOut={() => void signOut()}
+    />
+  );
+}
+
+function App() {
+  const demoMode = new URLSearchParams(window.location.search).has("demo");
+  return demoMode ? <BookmarkDashboard /> : <CloudApp />;
 }
 
 export default App;

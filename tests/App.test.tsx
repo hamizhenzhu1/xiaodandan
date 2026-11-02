@@ -5,7 +5,10 @@ import App from "../src/App";
 import { STORAGE_KEY } from "../src/services/storage";
 
 describe("App", () => {
-  beforeEach(() => window.localStorage.clear());
+  beforeEach(() => {
+    window.history.replaceState({}, "", "/?demo=1");
+    window.localStorage.clear();
+  });
 
   it("adds a bookmark, normalizes its URL and persists it", async () => {
     const user = userEvent.setup();

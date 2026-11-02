@@ -47,6 +47,9 @@ jobs:
           pnpm test
 
       - name: Build website
+        env:
+          VITE_SUPABASE_URL: https://jxodkmhyonghegeewktv.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_O7aQVizfWohwmuACCgYWbQ_fwdqmT4A
         run: |
           pnpm exec tsc -b
           pnpm exec vite build --base=/xiaodandan/
