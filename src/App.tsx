@@ -42,6 +42,7 @@ function App() {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
   const [showForm, setShowForm] = useState(false);
+  const [preferredCategoryId, setPreferredCategoryId] = useState<string>();
   const [editingBookmark, setEditingBookmark] = useState<Bookmark>();
   const [deletingBookmark, setDeletingBookmark] = useState<Bookmark>();
   const [showSettings, setShowSettings] = useState(false);
@@ -59,6 +60,22 @@ function App() {
     () => filterBookmarks(data.bookmarks, query, activeCategory),
     [data.bookmarks, query, activeCategory],
   );
+
+  const sortedCategories = useMemo(
+    () => data.categories.slice().sort((a, b) => a.order - b.order),
+    [data.categories],
+  );
+
+  const visibleCategories = useMemo(() => {
+    const categories =
+      activeCategory === "all"
+        ? sortedCategories
+        : sortedCategories.filter((category) => category.id === activeCategory);
+    if (!query.trim()) return categories;
+    return categories.filter(
+      (category) => filterBookmarks(data.bookmarks, query, category.id).length > 0,
+    );
+  }, [activeCategory, data.bookmarks, query, sortedCategories]);
 
   function notify(message: string) {
     window.clearTimeout(toastTimer.current);
@@ -100,6 +117,77 @@ function App() {
     if (!over || active.id === over.id) return;
     update({ type: "reorder", activeId: String(active.id), overId: String(over.id) });
     notify("顺序已更新");
+  }
+
+  function openFormForCategory(categoryId?: string) {
+    setPreferredCategoryId(categoryId);
+    setShowForm(true);
+  }
+
+  function renderCategorySection(category: AppData["categories"][number]) {
+    const bookmarks = filterBookmarks(data.bookmarks, query, category.id);
+    const marketplaceClass = ["tmall", "jd", "dewu"].includes(category.id)
+      ? `marketplace-${category.id}`
+      : "marketplace-other";
+
+    return (
+      <section className={`category-collection ${marketplaceClass}`} key={category.id}>
+        <header className="category-collection-header">
+          <div className="category-title-group">
+            <span className="category-emblem" aria-hidden="true">
+              {category.name.slice(0, 1)}
+            </span>
+            <div>
+              <p className="eyebrow">MARKETPLACE</p>
+              <h2>{category.name}</h2>
+            </div>
+          </div>
+          <div className="category-header-actions">
+            <span>{bookmarks.length} 个网址</span>
+            <button
+              className="category-add-button"
+              type="button"
+              onClick={() => openFormForCategory(category.id)}
+              aria-label={`添加到${category.name}`}
+            >
+              <Plus aria-hidden="true" size={16} /> 添加
+            </button>
+          </div>
+        </header>
+
+        {bookmarks.length > 0 ? (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={bookmarks.map((bookmark) => bookmark.id)}
+              strategy={rectSortingStrategy}
+            >
+              <div className="bookmark-grid">
+                {bookmarks.map((bookmark) => (
+                  <BookmarkCard
+                    key={bookmark.id}
+                    bookmark={bookmark}
+                    category={category}
+                    onEdit={setEditingBookmark}
+                    onDelete={setDeletingBookmark}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        ) : (
+          <div className="empty-category">
+            <p>还没有收藏网址</p>
+            <button type="button" onClick={() => openFormForCategory(category.id)}>
+              为{category.name}添加第一个网址 <ArrowRight aria-hidden="true" size={15} />
+            </button>
+          </div>
+        )}
+      </section>
+    );
   }
 
   function handleExport() {
@@ -172,7 +260,7 @@ function App() {
             className="button primary compact"
             type="button"
             aria-label="添加新网址"
-            onClick={() => setShowForm(true)}
+            onClick={() => openFormForCategory()}
           >
             <Plus aria-hidden="true" size={18} /> 添加网址
           </button>
@@ -273,55 +361,25 @@ function App() {
             </div>
           </div>
 
-          <div className="section-heading">
+          <div className="section-heading collections-overview">
             <div>
-              <p className="eyebrow">COLLECTION</p>
-              <h2>{activeCategoryName}</h2>
+              <p className="eyebrow">SHOP COLLECTIONS</p>
+              <h2>{activeCategory === "all" ? "平台收藏" : activeCategoryName}</h2>
             </div>
             <p>{filteredBookmarks.length} 个结果</p>
           </div>
 
-          {filteredBookmarks.length > 0 ? (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={filteredBookmarks.map((bookmark) => bookmark.id)}
-                strategy={rectSortingStrategy}
-              >
-                <div className="bookmark-grid">
-                  {filteredBookmarks.map((bookmark) => (
-                    <BookmarkCard
-                      key={bookmark.id}
-                      bookmark={bookmark}
-                      category={data.categories.find(
-                        (category) => category.id === bookmark.categoryId,
-                      )}
-                      onEdit={setEditingBookmark}
-                      onDelete={setDeletingBookmark}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          ) : (
+          {query.trim() && filteredBookmarks.length === 0 ? (
             <div className="empty-state">
               <span>
                 <Leaf aria-hidden="true" size={28} />
               </span>
-              <h3>{data.bookmarks.length === 0 ? "这里还很安静" : "没有找到匹配的网址"}</h3>
-              <p>
-                {data.bookmarks.length === 0
-                  ? "收藏第一个常用网站，让这片空间慢慢长起来。"
-                  : "试试更短的关键词，或者切换到其他分类。"}
-              </p>
-              {data.bookmarks.length === 0 && (
-                <button className="button primary" type="button" onClick={() => setShowForm(true)}>
-                  <Plus aria-hidden="true" size={18} /> 添加第一个网址
-                </button>
-              )}
+              <h3>没有找到匹配的网址</h3>
+              <p>试试更短的关键词，或者切换到其他分类。</p>
+            </div>
+          ) : (
+            <div className="category-collections">
+              {visibleCategories.map((category) => renderCategorySection(category))}
             </div>
           )}
         </section>
@@ -336,9 +394,11 @@ function App() {
         <BookmarkForm
           bookmark={editingBookmark}
           categories={data.categories}
+          defaultCategoryId={preferredCategoryId}
           onClose={() => {
             setShowForm(false);
             setEditingBookmark(undefined);
+            setPreferredCategoryId(undefined);
           }}
           onSubmit={(draft) => {
             if (editingBookmark) {
@@ -350,6 +410,7 @@ function App() {
             }
             setShowForm(false);
             setEditingBookmark(undefined);
+            setPreferredCategoryId(undefined);
           }}
         />
       )}

@@ -7,16 +7,25 @@ import { Modal } from "../../components/Modal";
 type BookmarkFormProps = {
   bookmark?: Bookmark;
   categories: Category[];
+  defaultCategoryId?: string;
   onSubmit: (draft: BookmarkDraft) => void;
   onClose: () => void;
 };
 
 type FormErrors = Partial<Record<keyof BookmarkDraft, string>>;
 
-export function BookmarkForm({ bookmark, categories, onSubmit, onClose }: BookmarkFormProps) {
+export function BookmarkForm({
+  bookmark,
+  categories,
+  defaultCategoryId,
+  onSubmit,
+  onClose,
+}: BookmarkFormProps) {
   const [name, setName] = useState(bookmark?.name ?? "");
   const [url, setUrl] = useState(bookmark?.url ?? "");
-  const [categoryId, setCategoryId] = useState(bookmark?.categoryId ?? categories[0]?.id ?? "");
+  const [categoryId, setCategoryId] = useState(
+    bookmark?.categoryId ?? defaultCategoryId ?? categories[0]?.id ?? "",
+  );
   const [note, setNote] = useState(bookmark?.note ?? "");
   const [errors, setErrors] = useState<FormErrors>({});
 

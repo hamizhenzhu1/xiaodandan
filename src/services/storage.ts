@@ -5,12 +5,29 @@ export const STORAGE_KEY = "linkhaven.app-data";
 export const MAX_IMPORT_BYTES = 1024 * 1024;
 
 export const defaultCategories: AppData["categories"] = [
-  { id: "common", name: "常用", order: 0 },
-  { id: "work", name: "工作", order: 1 },
-  { id: "study", name: "学习", order: 2 },
-  { id: "life", name: "生活", order: 3 },
-  { id: "fun", name: "娱乐", order: 4 },
+  { id: "tmall", name: "天猫", order: 0 },
+  { id: "jd", name: "京东", order: 1 },
+  { id: "dewu", name: "得物", order: 2 },
 ];
+
+export function ensureMarketplaceCategories(data: AppData): AppData {
+  const requiredIds = new Set(defaultCategories.map((category) => category.id));
+  const existingById = new Map(data.categories.map((category) => [category.id, category]));
+  const marketplaceCategories = defaultCategories.map((category, order) => ({
+    ...(existingById.get(category.id) ?? category),
+    name: category.name,
+    order,
+  }));
+  const legacyCategories = data.categories
+    .filter((category) => !requiredIds.has(category.id))
+    .sort((a, b) => a.order - b.order)
+    .map((category, index) => ({ ...category, order: marketplaceCategories.length + index }));
+
+  return {
+    ...data,
+    categories: [...marketplaceCategories, ...legacyCategories],
+  };
+}
 
 export function createDefaultAppData(): AppData {
   return {
@@ -41,7 +58,7 @@ export function loadAppData(storage: StorageLike): LoadResult {
         error: "本地数据格式异常，原数据已保留。你可以导入备份或重新开始。",
       };
     }
-    return { data: result.data };
+    return { data: ensureMarketplaceCategories(result.data) };
   } catch {
     return {
       data: createDefaultAppData(),
@@ -57,7 +74,7 @@ export function saveAppData(storage: StorageLike, data: AppData): void {
 
 export function parseImportData(raw: string): AppData {
   const parsed: unknown = JSON.parse(raw);
-  return appDataSchema.parse(parsed);
+  return ensureMarketplaceCategories(appDataSchema.parse(parsed));
 }
 
 export function serializeAppData(data: AppData): string {

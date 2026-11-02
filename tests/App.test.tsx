@@ -11,7 +11,7 @@ describe("App", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "添加第一个网址" }));
+    await user.click(screen.getByRole("button", { name: "为天猫添加第一个网址" }));
     await user.type(screen.getByLabelText("网站名称"), "示例网站");
     await user.type(screen.getByLabelText("网址"), "example.com");
     await user.type(screen.getByLabelText(/备注/), "测试备注");
@@ -28,7 +28,7 @@ describe("App", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "添加第一个网址" }));
+    await user.click(screen.getByRole("button", { name: "添加新网址" }));
     await user.type(screen.getByLabelText("网站名称"), "危险网址");
     await user.type(screen.getByLabelText("网址"), "javascript:alert(1)");
     await user.click(screen.getByRole("button", { name: "添加网址" }));
@@ -40,7 +40,7 @@ describe("App", () => {
   it("deletes a bookmark only after confirmation", async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole("button", { name: "添加第一个网址" }));
+    await user.click(screen.getByRole("button", { name: "为天猫添加第一个网址" }));
     await user.type(screen.getByLabelText("网站名称"), "稍后删除");
     await user.type(screen.getByLabelText("网址"), "delete.example.com");
     await user.click(screen.getByRole("button", { name: "添加网址" }));
@@ -60,7 +60,9 @@ describe("App", () => {
     ];
     for (const [index, [name, url]] of samples.entries()) {
       await user.click(
-        screen.getByRole("button", { name: index === 0 ? "添加第一个网址" : "添加新网址" }),
+        screen.getByRole("button", {
+          name: index === 0 ? "为天猫添加第一个网址" : "添加新网址",
+        }),
       );
       await user.type(screen.getByLabelText("网站名称"), name);
       await user.type(screen.getByLabelText("网址"), url);
@@ -70,5 +72,17 @@ describe("App", () => {
     await user.type(screen.getByLabelText("搜索网址"), "设计");
     expect(screen.getByRole("link", { name: "打开 设计收藏" })).toBeVisible();
     expect(screen.queryByRole("link", { name: "打开 学习收藏" })).not.toBeInTheDocument();
+  });
+
+  it("shows the three marketplace sections and preselects the chosen section", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(screen.getByRole("heading", { name: "天猫" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "京东" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "得物" })).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "为京东添加第一个网址" }));
+    expect(screen.getByRole("combobox", { name: "分类" })).toHaveValue("jd");
   });
 });

@@ -26,7 +26,11 @@ describe("storage service", () => {
     const result = loadAppData(createMemoryStorage());
     expect(result.error).toBeUndefined();
     expect(result.data.version).toBe(1);
-    expect(result.data.categories).toHaveLength(5);
+    expect(result.data.categories.map((category) => category.name)).toEqual([
+      "天猫",
+      "京东",
+      "得物",
+    ]);
   });
 
   it("does not overwrite malformed source data while loading", () => {
@@ -48,6 +52,24 @@ describe("storage service", () => {
     const data = createDefaultAppData();
     expect(parseImportData(serializeAppData(data))).toEqual(data);
     expect(() => parseImportData('{"version":2}')).toThrow();
+  });
+
+  it("adds marketplace categories while preserving legacy categories", () => {
+    const legacyData = {
+      version: 1,
+      bookmarks: [],
+      categories: [{ id: "common", name: "常用", order: 0 }],
+      settings: { theme: "system" },
+    };
+    const storage = createMemoryStorage(JSON.stringify(legacyData));
+
+    expect(loadAppData(storage).data.categories.map((category) => category.id)).toEqual([
+      "tmall",
+      "jd",
+      "dewu",
+      "common",
+    ]);
+    expect(storage.value).toBe(JSON.stringify(legacyData));
   });
 
   it("uses a stable storage key", () => {
