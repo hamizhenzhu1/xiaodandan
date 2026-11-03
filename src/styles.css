@@ -710,12 +710,20 @@ main,
   color: var(--green);
   transform: translate(2px, -2px);
 }
-.card-note {
-  min-height: 36px;
-  margin: 16px 0 0;
+.card-note-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 16px;
   padding-top: 13px;
-  overflow: hidden;
   border-top: 1px solid var(--line);
+}
+.card-note {
+  flex: 1;
+  min-width: 0;
+  min-height: 36px;
+  margin: 0;
+  overflow: hidden;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
@@ -726,6 +734,39 @@ main,
 .card-note.muted {
   color: var(--faint);
   font-style: italic;
+}
+.note-copy-button {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--surface-solid);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+.note-copy-button:hover {
+  color: var(--green-dark);
+  border-color: color-mix(in srgb, var(--green) 32%, transparent);
+  background: var(--green-soft);
+}
+.note-copy-button.copied {
+  color: var(--green-dark);
+  border-color: color-mix(in srgb, var(--green) 32%, transparent);
+  background: var(--green-soft);
+}
+.note-copy-button.failed {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 28%, transparent);
 }
 
 .empty-state {

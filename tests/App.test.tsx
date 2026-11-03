@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../src/App";
 import { STORAGE_KEY } from "../src/services/storage";
 
@@ -25,6 +25,28 @@ describe("App", () => {
       "https://example.com/",
     );
     await waitFor(() => expect(window.localStorage.getItem(STORAGE_KEY)).toContain("示例网站"));
+  });
+
+  it("copies a bookmark note with one click", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "为天猫添加第一个网址" }));
+    await user.type(screen.getByLabelText("网站名称"), "复制示例");
+    await user.type(screen.getByLabelText("网址"), "copy.example.com");
+    await user.type(screen.getByLabelText(/备注/), "需要复制的完整备注");
+    await user.click(screen.getByRole("button", { name: "添加网址" }));
+    await user.click(screen.getByRole("button", { name: "复制 复制示例 的备注" }));
+
+    expect(writeText).toHaveBeenCalledWith("需要复制的完整备注");
+    expect(screen.getByRole("button", { name: "复制 复制示例 的备注" })).toHaveTextContent(
+      "已复制",
+    );
   });
 
   it("shows a useful validation error for unsafe URLs", async () => {

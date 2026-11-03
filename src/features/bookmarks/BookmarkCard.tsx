@@ -1,7 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ExternalLink, GripVertical, Pencil, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Check, Copy, ExternalLink, GripVertical, Pencil, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import type { Bookmark, Category } from "../../types/app";
 import { getFaviconUrl, getHostname } from "../../utils/url";
 
@@ -14,6 +14,8 @@ type BookmarkCardProps = {
 
 export function BookmarkCard({ bookmark, category, onEdit, onDelete }: BookmarkCardProps) {
   const [faviconFailed, setFaviconFailed] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const copyTimer = useRef<number | undefined>(undefined);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: bookmark.id,
   });
@@ -22,6 +24,20 @@ export function BookmarkCard({ bookmark, category, onEdit, onDelete }: BookmarkC
     transform: CSS.Transform.toString(transform),
     transition,
   };
+
+  useEffect(() => () => window.clearTimeout(copyTimer.current), []);
+
+  async function handleCopyNote() {
+    if (!bookmark.note) return;
+    window.clearTimeout(copyTimer.current);
+    try {
+      await navigator.clipboard.writeText(bookmark.note);
+      setCopyState("copied");
+    } catch {
+      setCopyState("failed");
+    }
+    copyTimer.current = window.setTimeout(() => setCopyState("idle"), 1800);
+  }
 
   return (
     <article
@@ -82,9 +98,26 @@ export function BookmarkCard({ bookmark, category, onEdit, onDelete }: BookmarkC
         <ExternalLink className="external-icon" aria-hidden="true" size={18} />
       </a>
 
-      <p className={bookmark.note ? "card-note" : "card-note muted"}>
-        {bookmark.note || "点击卡片，前往这个网站"}
-      </p>
+      <div className="card-note-row">
+        <p className={bookmark.note ? "card-note" : "card-note muted"}>
+          {bookmark.note || "点击卡片，前往这个网站"}
+        </p>
+        {bookmark.note && (
+          <button
+            className={`note-copy-button ${copyState}`}
+            type="button"
+            aria-label={`复制 ${bookmark.name} 的备注`}
+            onClick={() => void handleCopyNote()}
+          >
+            {copyState === "copied" ? (
+              <Check aria-hidden="true" size={14} />
+            ) : (
+              <Copy aria-hidden="true" size={14} />
+            )}
+            {copyState === "copied" ? "已复制" : copyState === "failed" ? "复制失败" : "复制"}
+          </button>
+        )}
+      </div>
     </article>
   );
 }
