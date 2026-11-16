@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { bookmarkDraftSchema } from "../../schemas/appData";
 import type { Bookmark, BookmarkDraft, Category } from "../../types/app";
-import { normalizeUrl } from "../../utils/url";
 import { Modal } from "../../components/Modal";
 
 type BookmarkFormProps = {
@@ -22,6 +21,7 @@ export function BookmarkForm({
   onClose,
 }: BookmarkFormProps) {
   const [name, setName] = useState(bookmark?.name ?? "");
+  const [specialNote, setSpecialNote] = useState(bookmark?.specialNote ?? "");
   const [url, setUrl] = useState(bookmark?.url ?? "");
   const [categoryId, setCategoryId] = useState(
     bookmark?.categoryId ?? defaultCategoryId ?? categories[0]?.id ?? "",
@@ -31,7 +31,7 @@ export function BookmarkForm({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const draftResult = bookmarkDraftSchema.safeParse({ name, url, categoryId, note });
+    const draftResult = bookmarkDraftSchema.safeParse({ name, specialNote, url, categoryId, note });
     if (!draftResult.success) {
       const nextErrors: FormErrors = {};
       for (const issue of draftResult.error.issues) {
@@ -42,16 +42,11 @@ export function BookmarkForm({
       return;
     }
 
-    try {
-      const normalizedUrl = normalizeUrl(draftResult.data.url);
-      onSubmit({
-        ...draftResult.data,
-        url: normalizedUrl,
-        note: draftResult.data.note || undefined,
-      });
-    } catch (error) {
-      setErrors({ url: error instanceof Error ? error.message : "网址格式不正确" });
-    }
+    onSubmit({
+      ...draftResult.data,
+      specialNote: draftResult.data.specialNote || undefined,
+      note: draftResult.data.note || undefined,
+    });
   }
 
   return (
@@ -78,20 +73,34 @@ export function BookmarkForm({
           </label>
 
           <label className="field full">
+            <span>
+              特殊备注 <b>可选</b>
+            </span>
+            <input
+              aria-label="特殊备注（可选）"
+              value={specialNote}
+              onChange={(event) => setSpecialNote(event.target.value)}
+              placeholder="例如：朋友推荐、限时活动"
+              aria-invalid={Boolean(errors.specialNote)}
+            />
+            <em className="character-count">{specialNote.length}/80</em>
+            {errors.specialNote && <small>{errors.specialNote}</small>}
+          </label>
+
+          <label className="field full">
             <span>网址</span>
             <input
               aria-label="网址"
               value={url}
               onChange={(event) => setUrl(event.target.value)}
               placeholder="example.com"
-              inputMode="url"
               aria-invalid={Boolean(errors.url)}
               aria-describedby={errors.url ? "url-error" : "url-hint"}
             />
             {errors.url ? (
               <small id="url-error">{errors.url}</small>
             ) : (
-              <em id="url-hint">未填写协议时，将自动补全 https://</em>
+              <em id="url-hint">不限制网址格式，输入的内容会原样保存</em>
             )}
           </label>
 

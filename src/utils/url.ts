@@ -1,30 +1,15 @@
-export function normalizeUrl(input: string): string {
+export function getNavigableUrl(input: string): string | undefined {
   const trimmed = input.trim();
-  if (!trimmed) throw new Error("请输入网址");
-
-  const withProtocol = /^[a-zA-Z][a-zA-Z\d+.-]*:/.test(trimmed) ? trimmed : `https://${trimmed}`;
-
-  let parsed: URL;
-  try {
-    parsed = new URL(withProtocol);
-  } catch {
-    throw new Error("请输入有效的网址，例如 example.com");
-  }
-
-  if (!["http:", "https:"].includes(parsed.protocol)) {
-    throw new Error("网址只支持 HTTP 或 HTTPS 协议");
-  }
-
-  if (!parsed.hostname || !parsed.hostname.includes(".")) {
-    throw new Error("请输入包含有效域名的网址");
-  }
-
-  return parsed.toString();
+  if (!trimmed) return undefined;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (/^[a-zA-Z][a-zA-Z\d+.-]*:/.test(trimmed)) return undefined;
+  return `https://${trimmed}`;
 }
 
 export function getHostname(url: string): string {
   try {
-    return new URL(url).hostname.replace(/^www\./, "");
+    const navigableUrl = getNavigableUrl(url);
+    return navigableUrl ? new URL(navigableUrl).hostname.replace(/^www\./, "") : url;
   } catch {
     return url;
   }
@@ -32,7 +17,8 @@ export function getHostname(url: string): string {
 
 export function getFaviconUrl(url: string): string {
   try {
-    return `${new URL(url).origin}/favicon.ico`;
+    const navigableUrl = getNavigableUrl(url);
+    return navigableUrl ? `${new URL(navigableUrl).origin}/favicon.ico` : "";
   } catch {
     return "";
   }

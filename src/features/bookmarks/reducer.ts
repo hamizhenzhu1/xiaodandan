@@ -13,6 +13,7 @@ function createBookmark(draft: BookmarkDraft, order: number): Bookmark {
   const now = new Date().toISOString();
   return {
     ...draft,
+    specialNote: draft.specialNote || undefined,
     note: draft.note || undefined,
     id: crypto.randomUUID(),
     order,
@@ -36,6 +37,7 @@ export function appReducer(state: AppData, action: AppAction): AppData {
             ? {
                 ...bookmark,
                 ...action.draft,
+                specialNote: action.draft.specialNote || undefined,
                 note: action.draft.note || undefined,
                 updatedAt: new Date().toISOString(),
               }

@@ -9,12 +9,14 @@ test.beforeEach(async ({ page }) => {
 test("manages, searches and persists bookmarks", async ({ page }) => {
   await page.getByRole("button", { name: "为京东添加第一个网址" }).click();
   await page.getByLabel("网站名称").fill("OpenAI 文档");
+  await page.getByRole("textbox", { name: "特殊备注（可选）", exact: true }).fill("朋友推荐");
   await page.getByRole("textbox", { name: "网址", exact: true }).fill("platform.openai.com/docs");
   await expect(page.getByRole("combobox", { name: "分类", exact: true })).toHaveValue("jd");
-  await page.getByLabel(/备注/).fill("开发时常用");
+  await page.getByRole("textbox", { name: "备注（可选）", exact: true }).fill("开发时常用");
   await page.getByRole("button", { name: "添加网址" }).click();
 
   await expect(page.getByRole("link", { name: "打开 OpenAI 文档" })).toBeVisible();
+  await expect(page.getByText("朋友推荐")).toBeVisible();
   await page.reload();
   await expect(page.getByRole("link", { name: "打开 OpenAI 文档" })).toBeVisible();
 

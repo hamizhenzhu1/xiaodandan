@@ -2,6 +2,7 @@ import type { RealtimeChannel, User } from "@supabase/supabase-js";
 import { createDefaultAppData } from "./storage";
 import { supabase } from "./supabase";
 import type { AppData } from "../types/app";
+import { decodeStoredUrl, encodeStoredUrl } from "../utils/bookmarkStorage";
 
 export type SharedWorkspace = {
   id: string;
@@ -75,16 +76,20 @@ export async function loadWorkspaceData(workspaceId: string): Promise<AppData> {
   if (error) throw error;
 
   const appData = createDefaultAppData();
-  appData.bookmarks = ((data ?? []) as BookmarkRow[]).map((row) => ({
-    id: row.id,
-    name: row.name,
-    url: row.url,
-    categoryId: row.category_id,
-    note: row.note ?? undefined,
-    order: row.sort_order,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  }));
+  appData.bookmarks = ((data ?? []) as BookmarkRow[]).map((row) => {
+    const storedUrl = decodeStoredUrl(row.url);
+    return {
+      id: row.id,
+      name: row.name,
+      url: storedUrl.url,
+      categoryId: row.category_id,
+      specialNote: storedUrl.specialNote,
+      note: row.note ?? undefined,
+      order: row.sort_order,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  });
   return appData;
 }
 
@@ -116,7 +121,7 @@ export async function saveWorkspaceData(
     id: bookmark.id,
     workspace_id: workspaceId,
     name: bookmark.name,
-    url: bookmark.url,
+    url: encodeStoredUrl(bookmark.url, bookmark.specialNote),
     category_id: bookmark.categoryId,
     note: bookmark.note ?? null,
     sort_order: index,

@@ -10,21 +10,24 @@ describe("App", () => {
     window.localStorage.clear();
   });
 
-  it("adds a bookmark, normalizes its URL and persists it", async () => {
+  it("adds a bookmark with its original URL and a special note", async () => {
     const user = userEvent.setup();
     render(<App />);
 
     await user.click(screen.getByRole("button", { name: "为天猫添加第一个网址" }));
     await user.type(screen.getByLabelText("网站名称"), "示例网站");
-    await user.type(screen.getByLabelText("网址"), "example.com");
-    await user.type(screen.getByLabelText(/备注/), "测试备注");
+    await user.type(screen.getByLabelText("特殊备注（可选）"), "朋友推荐");
+    await user.type(screen.getByLabelText("网址"), "example.com/原样路径");
+    await user.type(screen.getByLabelText("备注（可选）"), "测试备注");
     await user.click(screen.getByRole("button", { name: "添加网址" }));
 
+    expect(screen.getByText("朋友推荐")).toBeVisible();
     expect(screen.getByRole("link", { name: "打开 示例网站" })).toHaveAttribute(
       "href",
-      "https://example.com/",
+      "https://example.com/原样路径",
     );
     await waitFor(() => expect(window.localStorage.getItem(STORAGE_KEY)).toContain("示例网站"));
+    expect(window.localStorage.getItem(STORAGE_KEY)).toContain("example.com/原样路径");
   });
 
   it("copies a bookmark note with one click", async () => {
@@ -39,7 +42,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "为天猫添加第一个网址" }));
     await user.type(screen.getByLabelText("网站名称"), "复制示例");
     await user.type(screen.getByLabelText("网址"), "copy.example.com");
-    await user.type(screen.getByLabelText(/备注/), "需要复制的完整备注");
+    await user.type(screen.getByLabelText("备注（可选）"), "需要复制的完整备注");
     await user.click(screen.getByRole("button", { name: "添加网址" }));
     await user.click(screen.getByRole("button", { name: "复制 复制示例 的备注" }));
 
@@ -49,7 +52,7 @@ describe("App", () => {
     );
   });
 
-  it("shows a useful validation error for unsafe URLs", async () => {
+  it("accepts and saves any non-empty URL text", async () => {
     const user = userEvent.setup();
     render(<App />);
 
@@ -58,8 +61,8 @@ describe("App", () => {
     await user.type(screen.getByLabelText("网址"), "javascript:alert(1)");
     await user.click(screen.getByRole("button", { name: "添加网址" }));
 
-    expect(await screen.findByText("网址只支持 HTTP 或 HTTPS 协议")).toBeVisible();
-    expect(screen.queryByRole("link", { name: "打开 危险网址" })).not.toBeInTheDocument();
+    expect(screen.getByText("javascript:alert(1)")).toBeVisible();
+    expect(window.localStorage.getItem(STORAGE_KEY)).toContain("javascript:alert(1)");
   });
 
   it("deletes a bookmark only after confirmation", async () => {

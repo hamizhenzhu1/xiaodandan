@@ -695,6 +695,15 @@ main,
   font-size: 18px;
   font-weight: 600;
 }
+.bookmark-copy .special-note {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--green-dark);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+}
 .bookmark-copy span {
   overflow: hidden;
   text-overflow: ellipsis;

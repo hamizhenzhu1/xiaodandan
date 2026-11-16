@@ -5,6 +5,7 @@ export type Bookmark = {
   name: string;
   url: string;
   categoryId: string;
+  specialNote?: string;
   note?: string;
   order: number;
   createdAt: string;
@@ -26,4 +27,4 @@ export type AppData = {
   };
 };
 
-export type BookmarkDraft = Pick<Bookmark, "name" | "url" | "categoryId" | "note">;
+export type BookmarkDraft = Pick<Bookmark, "name" | "url" | "categoryId" | "specialNote" | "note">;

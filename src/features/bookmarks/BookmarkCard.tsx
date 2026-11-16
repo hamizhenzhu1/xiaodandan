@@ -3,7 +3,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Check, Copy, ExternalLink, GripVertical, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { Bookmark, Category } from "../../types/app";
-import { getFaviconUrl, getHostname } from "../../utils/url";
+import { getFaviconUrl, getHostname, getNavigableUrl } from "../../utils/url";
 
 type BookmarkCardProps = {
   bookmark: Bookmark;
@@ -79,7 +79,7 @@ export function BookmarkCard({ bookmark, category, onEdit, onDelete }: BookmarkC
 
       <a
         className="bookmark-link"
-        href={bookmark.url}
+        href={getNavigableUrl(bookmark.url)}
         target="_blank"
         rel="noopener noreferrer"
         aria-label={`打开 ${bookmark.name}`}
@@ -93,6 +93,7 @@ export function BookmarkCard({ bookmark, category, onEdit, onDelete }: BookmarkC
         </span>
         <span className="bookmark-copy">
           <strong>{bookmark.name}</strong>
+          {bookmark.specialNote && <em className="special-note">{bookmark.specialNote}</em>}
           <span>{getHostname(bookmark.url)}</span>
         </span>
         <ExternalLink className="external-icon" aria-hidden="true" size={18} />

@@ -14,7 +14,7 @@ export function filterBookmarks(
     const categoryMatches = categoryId === "all" || bookmark.categoryId === categoryId;
     const queryMatches =
       !normalizedQuery ||
-      [bookmark.name, bookmark.url, bookmark.note ?? ""].some((value) =>
+      [bookmark.name, bookmark.url, bookmark.specialNote ?? "", bookmark.note ?? ""].some((value) =>
         value.toLocaleLowerCase().includes(normalizedQuery),
       );
     return categoryMatches && queryMatches;

@@ -5,13 +5,9 @@ export const themeSchema = z.enum(["light", "dark", "system"]);
 export const bookmarkSchema = z.object({
   id: z.string().min(1),
   name: z.string().trim().min(1).max(40),
-  url: z
-    .string()
-    .url()
-    .refine((value) => ["http:", "https:"].includes(new URL(value).protocol), {
-      message: "网址只支持 HTTP 或 HTTPS 协议",
-    }),
+  url: z.string().trim().min(1),
   categoryId: z.string().min(1),
+  specialNote: z.string().trim().max(80).optional(),
   note: z.string().trim().max(200).optional(),
   order: z.number().int().nonnegative(),
   createdAt: z.string().datetime(),
@@ -35,5 +31,6 @@ export const bookmarkDraftSchema = z.object({
   name: z.string().trim().min(1, "请输入网站名称").max(40, "名称不能超过 40 个字符"),
   url: z.string().trim().min(1, "请输入网址"),
   categoryId: z.string().min(1, "请选择分类"),
+  specialNote: z.string().trim().max(80, "特殊备注不能超过 80 个字符").optional(),
   note: z.string().trim().max(200, "备注不能超过 200 个字符").optional(),
 });

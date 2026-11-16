@@ -1,21 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { getHostname, normalizeUrl } from "../src/utils/url";
+import { getHostname, getNavigableUrl } from "../src/utils/url";
 
-describe("normalizeUrl", () => {
-  it("adds https when the protocol is omitted", () => {
-    expect(normalizeUrl("example.com/path")).toBe("https://example.com/path");
+describe("getNavigableUrl", () => {
+  it("creates a clickable address without changing the saved text", () => {
+    expect(getNavigableUrl("example.com/path")).toBe("https://example.com/path");
   });
 
-  it("keeps valid http urls", () => {
-    expect(normalizeUrl("http://example.com")).toBe("http://example.com/");
+  it("keeps HTTP addresses clickable", () => {
+    expect(getNavigableUrl("http://example.com")).toBe("http://example.com");
   });
 
-  it("rejects dangerous protocols", () => {
-    expect(() => normalizeUrl("javascript:alert(1)")).toThrow("HTTP 或 HTTPS");
-  });
-
-  it("rejects incomplete host names", () => {
-    expect(() => normalizeUrl("localhost")).toThrow("有效域名");
+  it("does not navigate to unsafe protocols even though they can be saved", () => {
+    expect(getNavigableUrl("javascript:alert(1)")).toBeUndefined();
   });
 });
 
